@@ -1,0 +1,1 @@
+You can connect to PostgreSQL database using Java by using the JDBC driver. First, import the PostgreSQL JDBC driver class. Then, create an instance of the driver using a connection string and username and password. Finally, use the DriverManager class's getConnection() method to obtain a java.sql.Connection object that represents a database connection.

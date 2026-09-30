@@ -1,0 +1,1 @@
+The purpose of a constructor in a class in Java is to initialize an object of that class. A constructor is a special kind of method that is used to create an object of its associated class. When an object of the class is created, the constructor is used to set the initial state of the object.

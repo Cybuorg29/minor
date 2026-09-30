@@ -1,0 +1,12 @@
+A `Person` class should include the following entries:
+- name: string
+- age: integer
+- gender: string
+- address: string
+- phone_number: string
+- email: string
+- occupation: string
+- school: string
+- current_city: string
+- birth_city: string
+- nationality: string

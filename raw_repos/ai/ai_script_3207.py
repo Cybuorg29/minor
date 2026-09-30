@@ -1,0 +1,2 @@
+def rgb_to_hex(red, green, blue):
+    return '#%02x%02x%02x' % (red, green, blue)

@@ -1,0 +1,1 @@
+In Java, the static keyword is used to indicate that an entity is associated with a class rather than an instance of a class. It can be used to denote class variables, class methods and other class elements, and is also used in various access modifiers. Static members are associated with the class itself, rather than any particular instance of the class.

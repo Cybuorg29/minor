@@ -1,0 +1,1 @@
+The code snippet is an example of the Template Method pattern. It provides a template method (eat, move, and sleep) that can be used by subclasses. The template method is defined in a superclass and the subclasses can override the methods to provide custom implementations.

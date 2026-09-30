@@ -1,0 +1,1 @@
+div.main-content p { /* CSS selector to select all paragraphs within a div element with the class "main-content" */ }
