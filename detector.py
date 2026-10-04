@@ -33,15 +33,23 @@ def extract_features(code: str):
     leading_spaces = [len(line) - len(line.lstrip()) for line in lines if line.strip()]
     avg_indent = (sum(leading_spaces) / len(leading_spaces)) if leading_spaces else 0
 
-    # Vocabulary Richness
-    unique_words = len(set(words))
-    ttr = unique_words / num_words if num_words > 0 else 0
-    
-    # Shannon Entropy (Predictability)
-    from collections import Counter
-    import math
-    word_counts = Counter(words)
-    entropy = sum(-(count/num_words) * math.log2(count/num_words) for count in word_counts.values()) if num_words > 0 else 0
+    # AST Features (Logic Complexity)
+    import ast
+    num_funcs = 0
+    num_ifs = 0
+    num_loops = 0
+    ast_depth = 0
+    try:
+        tree = ast.parse(code)
+        num_funcs = sum(1 for node in ast.walk(tree) if isinstance(node, ast.FunctionDef))
+        num_ifs = sum(1 for node in ast.walk(tree) if isinstance(node, ast.If))
+        num_loops = sum(1 for node in ast.walk(tree) if isinstance(node, (ast.For, ast.While)))
+        
+        def get_depth(node):
+            return 1 + max([0] + [get_depth(child) for child in ast.iter_child_nodes(node)])
+        ast_depth = get_depth(tree)
+    except SyntaxError:
+        pass
 
     return [
         avg_word_length,
@@ -50,14 +58,20 @@ def extract_features(code: str):
         blank_ratio,
         comment_ratio,
         avg_indent,
-        ttr,
-        entropy
+        num_funcs,
+        num_ifs,
+        num_loops,
+        ast_depth
     ]
 
-# --- 2. LOAD DATASET ---
+# --- 2. LOAD DATASET & TRAIN ROBUST TF-IDF MODEL ---
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+
 dataset_path = os.path.join(os.path.dirname(__file__), "dataset.json")
 
-training_data = []
+training_texts = []
 labels = []
 
 if os.path.exists(dataset_path):
@@ -65,27 +79,36 @@ if os.path.exists(dataset_path):
     with open(dataset_path, "r") as f:
         data = json.load(f)
         for item in data:
-            training_data.append(extract_features(item["code"]))
-            labels.append(item["label"])
+            training_texts.append(item["code"])
+            # Ensure label is 1 for AI, 0 for Human
+            lbl = 1 if item["label"] in [1, "AI"] else 0
+            labels.append(lbl)
+
+    # 🚀 Inject Synthetic AI PyTest examples to remove the dataset bias!
+    synthetic_ai_tests = [
+        "import pytest\ndef test_classify():\n    assert classify_score(0.9) == 'AI'",
+        "import pytest\ndef test_function_boundaries():\n    with pytest.raises(ValueError):\n        my_func(-1)",
+        "import pytest\n@pytest.fixture\ndef setup_data():\n    return [1, 2, 3]\n\ndef test_data(setup_data):\n    assert len(setup_data) == 3",
+        "import unittest\nclass TestMyCode(unittest.TestCase):\n    def test_basic(self):\n        self.assertEqual(1, 1)",
+        "def test_ai_score_out_of_bounds():\n    with pytest.raises(ValueError):\n        classify_ai_score(-0.1)"
+    ]
+    for test_code in synthetic_ai_tests:
+        training_texts.append(test_code)
+        labels.append(1) # Label as AI
+        
 else:
     print("⚠️ WARNING: dataset.json not found! Falling back to dummy data.")
-    print("Please run `python3 dataset_builder.py` to generate real data.")
-    # 0 = Human, 1 = AI
-    human_1 = "def f(x):\n  # add one\n  y = x+1\n  return y\n\n\n"
-    human_2 = "let i=0;\nfor(;i<10;i++){\n console.log(i);\n}"
-    ai_1 = "# Function to calculate sum\ndef calculate_sum(val_one, val_two):\n    # Return result\n    return val_one + val_two"
-    ai_2 = "// Loop counter\nfor (let loopIndex = 0; loopIndex < 10; loopIndex++) {\n    console.log(loopIndex);\n}"
+    training_texts = ["def ai(): pass", "def human(): pass"]
+    labels = [1, 0]
 
-    training_data = [
-        extract_features(human_1), extract_features(human_2),
-        extract_features(ai_1), extract_features(ai_2)
-    ]
-    labels = [0, 0, 1, 1]
+print("🚀 Training highly robust TF-IDF Model...")
+rf_model = Pipeline([
+    ('tfidf', TfidfVectorizer(max_features=2000, stop_words='english')),
+    ('clf', LogisticRegression(random_state=42, max_iter=1000, class_weight="balanced"))
+])
 
-# --- 3. TRAIN THE RANDOM FOREST ---
-rf_model = RandomForestClassifier(n_estimators=100, class_weight='balanced', random_state=42) # Increased to 100 trees for better accuracy
-rf_model.fit(training_data, labels)
-print(f"🌲 Random Forest trained on {len(training_data)} examples!")
+rf_model.fit(training_texts, labels)
+print(f"✅ TF-IDF Model trained on {len(training_texts)} snippets!")
 
 # --- 4. PREDICT NEW CODE (For direct testing) ---
 def detect_ai_code(new_code):
